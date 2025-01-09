@@ -13,25 +13,30 @@ def get_columns():
         {"label": "Item", "fieldname": "item", "fieldtype": "Data", "width": 300},
         {"label": "Voucher Type", "fieldname": "voucher_type", "fieldtype": "Data", "width": 200, "align":"center"},
         {"label": "Voucher No", "fieldname": "voucher_no", "fieldtype": "Data", "width": 200, "align":"center"},
+        {"label": "Task No", "fieldname": "task_no", "fieldtype": "Data", "width": 200, "align":"center"},
         {"label": "Qty", "fieldname": "qty", "fieldtype": "Data", "width": 100, "align":"center"},
         {"label": "Rate", "fieldname": "rate", "fieldtype": "Currency", "width": 200},
         {"label": "Amount", "fieldname": "amount", "fieldtype": "Currency", "width": 200}
     ]
 
 def get_data(filters):
-    if 'project' not in filters:
+    if 'project'not in filters:
         return []
     
     company = frappe.db.get_value("Project", filters['project'], "company")
     currency = frappe.db.get_value("Company", company, "default_currency")
 
+    args = [currency, filters['project']]
+    if 'task' in filters and filters['task']:
+        args.append(filters['task'])
 
-    sales_orders = frappe.db.sql("""
+    query = """
         SELECT
             so.name as item,
             'Sales Order' as voucher_type,
             so.name as voucher_no,
             so.total_qty as qty,
+            so.task as task_no,
             so.net_total as rate,
             so.total as amount,
             %s as currency,
@@ -40,15 +45,23 @@ def get_data(filters):
             `tabSales Order` AS so
         WHERE
             so.project = %s AND so.docstatus = 1
-    """, (currency, filters['project']), as_dict=1)
+    """
 
-    sales_invoices = frappe.db.sql("""
+    if 'task' in filters and filters['task']:
+        query += " AND so.task = %s"
+
+    sales_orders = frappe.db.sql(query, tuple(args), as_dict=1)
+
+
+    si_query = """
         SELECT
             si.name as item,
             'Sales Invoice' as voucher_type,
             si.name as voucher_no,
             '' as qty,
             '' as rate,
+            '' as task,
+            si.task as task_no,
             si.total as amount,
             %s as currency,
             1 as indent 
@@ -56,9 +69,14 @@ def get_data(filters):
             `tabSales Invoice` AS si
         WHERE
             si.project = %s AND si.docstatus = 1
-    """, (currency, filters['project']), as_dict=1)
+    """
 
-    delivery_notes = frappe.db.sql("""
+    if 'task' in filters and filters['task']:
+        si_query += " AND si.task = %s"
+
+    sales_invoices = frappe.db.sql(si_query, tuple(args), as_dict=1)
+
+    dn_query = """
         SELECT
             dni.item_code as item,
             'Delivery Note' as voucher_type,
@@ -66,6 +84,7 @@ def get_data(filters):
             dni.qty as qty,
             dni.rate as rate,
             dni.amount as amount,
+            dn.task as task_no,
             %s as currency,
             1 as indent 
         FROM
@@ -75,15 +94,21 @@ def get_data(filters):
         WHERE
             dn.project = %s AND dn.docstatus = 1 AND dni.rate > 0   AND dni.amount > 0
 
-    """, (currency, filters['project']), as_dict=1)
+    """
 
-    purchase_invoices = frappe.db.sql("""
+    if 'task' in filters and filters['task']:
+        dn_query += " AND dn.task = %s"
+
+    delivery_notes = frappe.db.sql(dn_query, tuple(args), as_dict=1)
+
+    pi_query = """
         SELECT
             pii.description as item,
             # pi.name as item,
             'Purchase Invoice' as voucher_type,
             pi.name as voucher_no,
             pii.qty as qty,
+            pi.task as task_no,
             pii.rate as rate,
             pii.amount as amount,
             %s as currency,
@@ -98,15 +123,20 @@ def get_data(filters):
             pii.project = %s
             AND pi.docstatus = 1
             AND i.is_stock_item = 0
-    """, (currency, filters['project']), as_dict=1)
+    """
+    if 'task' in filters and filters['task']:
+        pi_query += " AND pi.task = %s"
+
+    purchase_invoices = frappe.db.sql(pi_query, tuple(args), as_dict=1)
 
 
-    stock_entries = frappe.db.sql("""
+    se_query = """
         SELECT
             sed.item_code as item,
             'Stock Entry' as voucher_type,
             se.name as voucher_no,
             IFNULL(SUM(sed.qty), 0) as qty,
+            se.task as task_no,
             sed.basic_rate as rate,
             sed.amount as amount,
             %s as currency,
@@ -119,15 +149,22 @@ def get_data(filters):
             sed.project = %s AND se.purpose = 'Material Issue' AND se.docstatus = 1
         GROUP BY
             sed.item_code
-    """, (currency, filters['project']), as_dict=1)
+    """
 
-    timesheets = frappe.db.sql("""
+    if 'task' in filters and filters['task']:
+        se_query += " AND se.task = %s"
+
+    stock_entries = frappe.db.sql(se_query, tuple(args), as_dict=1)
+
+
+    ts_query = """
         SELECT
             tsd.activity_type as item,
             'Timesheet' as voucher_type,
             ts.name as voucher_no,
             tsd.hours as qty,
             # IFNULL(ts.total_costing_amount / NULLIF(ts.total_hours, 0), 0) as rate,
+            tsd.task as task_no,
             tsd.costing_rate as rate,
             # tsd.hours * IFNULL(ts.total_costing_amount / NULLIF(ts.total_hours, 0), 0) as amount,
             tsd.hours * tsd.costing_rate as amount,
@@ -139,7 +176,12 @@ def get_data(filters):
             `tabTimesheet Detail` AS tsd ON ts.name = tsd.parent
         WHERE
             tsd.project = %s AND ts.docstatus = 1
-    """, (currency, filters['project']), as_dict=1)
+    """
+    
+    if 'task' in filters and filters['task']:
+        ts_query += " AND tsd.task = %s"
+
+    timesheets = frappe.db.sql(ts_query, tuple(args), as_dict=1)
 
     # expense_claims = frappe.db.sql("""
     #     SELECT
@@ -157,13 +199,14 @@ def get_data(filters):
     #         ec.project = %s AND ec.docstatus = 1
     # """, (currency, filters['project']), as_dict=1)
 
-    expense_claims = frappe.db.sql("""
+    ec_query = """
         SELECT
             ecd.expense_type as item,
             'Expense Claim' as voucher_type,
             ec.name as voucher_no,
             '1' as qty,
             ecd.amount as rate,
+            ec.task as task_no,
             # ec.total_sanctioned_amount as amount,
             ecd.amount as amount,
             # ec.employee_name as item,
@@ -175,7 +218,12 @@ def get_data(filters):
             `tabExpense Claim Detail` AS ecd ON ec.name = ecd.parent
         WHERE
             ecd.project = %s AND ec.docstatus = 1
-    """, (currency, filters['project']), as_dict=1)
+    """
+
+    if 'task' in filters and filters['task']:
+        ec_query += " AND ec.task = %s"
+    
+    expense_claims = frappe.db.sql(ec_query, tuple(args), as_dict=1)
 
     total_amount_orders = sum(so['amount'] for so in sales_orders)
     total_amount_invoices = sum(si['amount'] for si in sales_invoices)
@@ -357,5 +405,6 @@ def get_data(filters):
     ]
 
     return data
+
 
 
