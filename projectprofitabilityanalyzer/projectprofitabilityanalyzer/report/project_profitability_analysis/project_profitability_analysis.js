@@ -8,6 +8,12 @@ frappe.query_reports["Project Profitability Analysis"] = {
             'label': __("Project"),
             'fieldtype': 'Link',
             'options': 'Project'
+        },
+        {
+            'fieldname': 'task',
+            'label': __("Task"),
+            'fieldtype': 'Link',
+            'options': 'Task'
         }
     ],
     "formatter": function (value, row, column, data, default_formatter) {
@@ -15,6 +21,8 @@ frappe.query_reports["Project Profitability Analysis"] = {
         console.log(data.currency)
         if (column.fieldname === "voucher_no") {
             value = frappe.format(value, {fieldtype: 'Link', options: data.voucher_type});
+        } else if(column.fieldname === "task_no"){
+            value = frappe.format(value, {fieldtype: 'Link', options: 'Task'});
         } else if (column.fieldname === "qty") {
             if (value === '') {
                 value = '';
