@@ -7,13 +7,36 @@ frappe.query_reports["Project Profitability Analysis"] = {
             'fieldname': 'project',
             'label': __("Project"),
             'fieldtype': 'Link',
-            'options': 'Project'
+            'options': 'Project',
+            'on_change': function() {
+                frappe.query_report.set_filter_value('task', '');
+            },
         },
         {
             'fieldname': 'task',
             'label': __("Task"),
             'fieldtype': 'Link',
-            'options': 'Task'
+            'options': 'Task',
+            'get_query': function() {
+                var project = frappe.query_report.get_filter_value('project');
+                if (project) {
+                    return {
+                        filters: {
+                            'project': project
+                        }
+                    };
+                }
+            },
+            'on_change': function() {
+                var task = frappe.query_report.get_filter_value('task');
+                if (task) {
+                    frappe.db.get_value('Task', task, 'project', function(value) {
+                        if (value && value.project) {
+                            frappe.query_report.set_filter_value('project', value.project);
+                        }
+                    });
+                }
+            }
         }
     ],
     "formatter": function (value, row, column, data, default_formatter) {
