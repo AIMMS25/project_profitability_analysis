@@ -9,7 +9,18 @@ frappe.query_reports["Project Profitability Analysis"] = {
             'fieldtype': 'Link',
             'options': 'Project',
             'on_change': function() {
-                frappe.query_report.set_filter_value('task', '');
+                var selected_task = frappe.query_report.get_filter_value('task');
+                var selected_project = frappe.query_report.get_filter_value('project');
+
+                if (selected_task) {
+                    frappe.db.get_value('Task', selected_task, 'project', function(value) {
+                        if (value && value.project !== selected_project) {
+                            frappe.query_report.set_filter_value('task', '');
+                        }
+                    });
+                }
+                frappe.query_report.refresh();
+                
             },
         },
         {
@@ -29,13 +40,16 @@ frappe.query_reports["Project Profitability Analysis"] = {
             },
             'on_change': function() {
                 var task = frappe.query_report.get_filter_value('task');
+                var project = frappe.query_report.get_filter_value('project');
+                
                 if (task) {
                     frappe.db.get_value('Task', task, 'project', function(value) {
-                        if (value && value.project) {
+                        if (value && value.project != project) {
                             frappe.query_report.set_filter_value('project', value.project);
                         }
                     });
                 }
+                frappe.query_report.refresh();
             }
         }
     ],
