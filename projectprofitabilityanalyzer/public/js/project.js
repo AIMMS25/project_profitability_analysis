@@ -5,7 +5,10 @@ frappe.ui.form.on("Project", {
                 method: "frappe.client.get_list",
                 args: {
                     doctype: "Purchase Order",
-                    filters: { project: frm.doc.name }, 
+                    filters: {
+                        project: frm.doc.name,
+                        status: ["!=", "Cancelled"] 
+                    }, 
                     fields: ["grand_total"], 
                 },
                 callback: function(response) {
