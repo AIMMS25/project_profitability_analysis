@@ -44,6 +44,15 @@ app_license = "MIT"
 # role_home_page = {
 #	"Role": "home_page"
 # }
+doctype_js = {
+    "Project" : "public/js/project.js",
+    }
+
+
+fixtures = [
+    {'dt':'Custom Field','filters': [['name','=','Project-custom_total_purchase_amount']]}
+    ]
+
 
 # Generators
 # ----------
