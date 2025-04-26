@@ -138,33 +138,34 @@ def get_data(filters):
     #         ec.project = %s AND ec.docstatus = 1
     # """, (currency, filters['project']), as_dict=1)
 
-    expense_claims = frappe.db.sql("""
-        SELECT
-            ecd.expense_type as item,
-            'Expense Claim' as voucher_type,
-            ec.name as voucher_no,
-            '1' as qty,
-            ecd.amount as rate,
-            # ec.total_sanctioned_amount as amount,
-            ecd.amount as amount,
-            # ec.employee_name as item,
-            %s as currency,
-            1 as indent 
-        FROM
-            `tabExpense Claim` AS ec
-        LEFT JOIN
-            `tabExpense Claim Detail` AS ecd ON ec.name = ecd.parent
-        WHERE
-            ecd.project = %s AND ec.docstatus = 1
-    """, (currency, filters['project']), as_dict=1)
+    # expense_claims = frappe.db.sql("""
+    #     SELECT
+    #         ecd.expense_type as item,
+    #         'Expense Claim' as voucher_type,
+    #         ec.name as voucher_no,
+    #         '1' as qty,
+    #         ecd.amount as rate,
+    #         # ec.total_sanctioned_amount as amount,
+    #         ecd.amount as amount,
+    #         # ec.employee_name as item,
+    #         %s as currency,
+    #         1 as indent 
+    #     FROM
+    #         `tabExpense Claim` AS ec
+    #     LEFT JOIN
+    #         `tabExpense Claim Detail` AS ecd ON ec.name = ecd.parent
+    #     WHERE
+    #         ecd.project = %s AND ec.docstatus = 1
+    # """, (currency, filters['project']), as_dict=1r)
 
     total_amount_orders = sum(so['amount'] for so in sales_orders)
     total_amount_invoices = sum(si['amount'] for si in sales_invoices)
     total_amount_purchases = sum(pi['amount'] for pi in purchase_invoices)
     total_amount_stock_entries = sum(se['amount'] for se in stock_entries)
     total_amount_timesheets = sum(ts['amount'] for ts in timesheets)
-    total_amount_expense_claims = sum(ec['amount'] for ec in expense_claims)
-    total_cost = sum([total_amount_expense_claims, total_amount_timesheets, total_amount_stock_entries, total_amount_purchases])
+    # total_amount_expense_claims = sum(ec['amount'] for ec in expense_claims)
+    # total_cost = sum([total_amount_expense_claims, total_amount_timesheets, total_amount_stock_entries, total_amount_purchases])
+    total_cost = sum([total_amount_timesheets, total_amount_stock_entries, total_amount_purchases])
     margin = total_amount_invoices - total_cost
     margin_ord = total_amount_orders - total_cost
 
@@ -249,19 +250,19 @@ def get_data(filters):
             }
         ] + timesheets
 
-    if total_amount_expense_claims:
-        data += [
-            {
-                'item': 'Total Expense Claim Cost',
-                'voucher_type': '',
-                'voucher_no': '',
-                'qty': '',
-                'rate': '',
-                'amount': total_amount_expense_claims,
-                'currency': currency,
-                'indent': 0 
-            }
-        ] + expense_claims
+    # if total_amount_expense_claims:
+    #     data += [
+    #         {
+    #             'item': 'Total Expense Claim Cost',
+    #             'voucher_type': '',
+    #             'voucher_no': '',
+    #             'qty': '',
+    #             'rate': '',
+    #             'amount': total_amount_expense_claims,
+    #             'currency': currency,
+    #             'indent': 0 
+    #         }
+    #     ] + expense_claims
 
 
     data += [
