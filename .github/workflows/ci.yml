@@ -1,22 +1,18 @@
-
 name: CI
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]
   pull_request:
 
 concurrency:
-  group: master-project_profitability_analysis-${{ github.event.number }}
+  group: project_profitability_analysis-${{ github.event.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   tests:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-    name: Server
+    name: Run Frappe Tests
 
     services:
       redis-cache:
@@ -33,60 +29,56 @@ jobs:
           MYSQL_ROOT_PASSWORD: root
         ports:
           - 3306:3306
-        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+        options: --health-cmd="mariadb-admin ping -u root -proot" --health-interval=5s --health-timeout=2s --health-retries=3
 
     steps:
-      - name: Clone
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Find tests
+      - name: Detect Tests Exist
         run: |
-          echo "Finding tests"
-          grep -rn "def test" > /dev/null
+          echo "Checking for test cases..."
+          grep -r "def test" || echo "No tests found"
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
-          check-latest: true
 
-      - name: Cache pip
+      - name: Cache pip dependencies
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py', '**/setup.cfg') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-            ${{ runner.os }}-
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/setup.py') }}
+          restore-keys: ${{ runner.os }}-pip-
 
-      - name: Get yarn cache directory path
+      - name: Get Yarn Cache Directory Path
         id: yarn-cache-dir-path
-        run: 'echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT'
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
 
-      - uses: actions/cache@v3
-        id: yarn-cache
+      - name: Cache yarn dependencies
+        uses: actions/cache@v3
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          restore-keys: ${{ runner.os }}-yarn-
 
       - name: Install MariaDB Client
         run: sudo apt-get update && sudo apt-get install -y mariadb-client
 
-      - name: Setup
+      - name: Setup Bench
         run: |
           pip install frappe-bench
           bench init --skip-redis-config-generation --skip-assets --python "$(which python)" ~/frappe-bench
-          mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
-          mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
+          mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4';"
+          mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci';"
 
-      - name: Install
+      - name: Install App and Site
         working-directory: /home/runner/frappe-bench
         run: |
           bench get-app project_profitability_analysis $GITHUB_WORKSPACE
@@ -95,12 +87,10 @@ jobs:
           bench --site test_site install-app project_profitability_analysis
           bench build
         env:
-          CI: 'Yes'
+          CI: "Yes"
 
-      - name: Run Tests
+      - name: Run App Tests
         working-directory: /home/runner/frappe-bench
         run: |
           bench --site test_site set-config allow_tests true
           bench --site test_site run-tests --app project_profitability_analysis
-        env:
-          TYPE: server
