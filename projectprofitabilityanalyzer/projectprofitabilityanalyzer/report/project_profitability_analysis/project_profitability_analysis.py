@@ -250,7 +250,7 @@ def get_data(filters):
     if total_amount_orders:
         data += [
             {
-                'item': 'Total Sales Order Amount',
+                'item': 'Total Sales Order Amount1',
                 'voucher_type': '',
                 'voucher_no': '',
                 'qty': '',
