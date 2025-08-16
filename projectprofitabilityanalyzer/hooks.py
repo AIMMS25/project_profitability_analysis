@@ -4,7 +4,7 @@ app_name = "projectprofitabilityanalyzer"
 app_title = "ProjectProfitabilityAnalyzer"
 app_publisher = "Craft"
 app_description = "For analyzing and reporting project profitability"
-app_email = "careers@craftinteractive.ae"
+app_email = "it@aimmsgroup.com"
 app_license = "MIT"
 
 # Includes in <head>
