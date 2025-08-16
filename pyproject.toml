@@ -1,9 +1,9 @@
 [project]
 name = "project_profitability_analysis"
 authors = [
-    { name = "aimms", email = "it!aimmsgroup.com"}
+    { name = "project_profitability_analysis", email = "it@aimmsgroup.com"}
 ]
-description = "sif"
+description = "project_profitability_analysis"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
