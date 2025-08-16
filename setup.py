@@ -11,7 +11,7 @@ setup(
 	version=version,
 	description="For analyzing and reporting project profitability",
 	author="Craft",
-	author_email="careers@craftinteractive.ae",
+	author_email="it@aimmsgroup.com",
 	packages=find_packages(),
 	zip_safe=False,
 	include_package_data=True,
