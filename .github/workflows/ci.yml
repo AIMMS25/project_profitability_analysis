@@ -4,11 +4,11 @@ name: CI
 on:
   push:
     branches:
-      - no_hr
+      - master
   pull_request:
 
 concurrency:
-  group: no_hr-project_profitability_analysis-${{ github.event.number }}
+  group: master-project_profitability_analysis-${{ github.event.number }}
   cancel-in-progress: true
 
 jobs:
